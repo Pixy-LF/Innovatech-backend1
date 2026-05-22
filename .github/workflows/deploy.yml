@@ -1,9 +1,9 @@
-name: CI/CD Deploy Innovatech
+name: Deploy Innovatech Backend
 
 on:
   push:
     branches:
-      - deploy
+      - deploy 
 
 jobs:
   build-and-push:
@@ -11,6 +11,12 @@ jobs:
     steps:
       - name: Checkout del código
         uses: actions/checkout@v3
+
+      - name: Configurar Java y Maven
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
       - name: Iniciar sesión en Docker Hub
         uses: docker/login-action@v2
@@ -24,20 +30,33 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/innovatech-backend1:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/innovatech-backend:latest
 
-  deploy-to-aws:
+  deploy-to-ec2:
+    needs: build-and-push 
     runs-on: ubuntu-latest
-    needs: build-and-push
     steps:
-      - name: Desplegar en AWS EC2 vía SSH
-        uses: appleboy/ssh-action@v0.1.10
+      - name: Despliegue remoto en AWS EC2 vía SSH
+        uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.AWS_EC2_IP }}
-          username: ubuntu
-          key: ${{ secrets.AWS_PRIVATE_KEY }}
+          host: ${{ secrets.EC2_HOST }}          
+          username: ubuntu                       
+          key: ${{ secrets.EC2_SSH_KEY }}       
           script: |
-            cd /home/ubuntu/app
-            docker compose pull backend1
-            docker compose up -d backend1
-            docker image prune -f
+            echo "Conectado exitosamente a AWS EC2. Iniciando actualización..."
+            
+            # 1. Nos movemos a la carpeta del proyecto en el servidor
+            cd /home/ubuntu/Innovatech-backend1 || mkdir -p /home/ubuntu/Innovatech-backend1 && cd /home/ubuntu/Innovatech-backend1
+            
+            # 2. Descargamos los últimos cambios (el nuevo docker-compose)
+            git pull origin deploy || true
+            
+            # 3. Bajamos los contenedores anteriores y limpiamos basura para no llenar el disco
+            docker compose down
+            docker system prune -f
+            
+            # 4. Descargamos la nueva imagen armada y levantamos el stack en segundo plano
+            docker compose pull
+            docker compose up -d --build
+            
+            echo "¡Innovatech Despacho Backend actualizado y corriendo con éxito!"
