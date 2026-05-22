@@ -9,7 +9,13 @@ RUN mvn clean package -DskipTests -Dstart-class=com.citt.SpringbootApiRestDespac
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
+RUN addgroup -S devopsgroup && adduser -S devopsuser -G devopsgroup
+
 COPY --from=builder /app/Springboot-API-REST-DESPACHO/target/*.jar app.jar
+
+RUN chown devopsuser:devopsgroup app.jar
+
+USER devopsuser
 
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
