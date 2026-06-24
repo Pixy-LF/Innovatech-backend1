@@ -42,7 +42,7 @@ jobs:
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         # NOTA: Cambia 'innovatech-frontend' por 'innovatech-backend' en el otro repositorio
-        ECR_REPOSITORY: innovatech-frontend 
+        ECR_REPOSITORY: innovatech-fronted 
         IMAGE_TAG: ${{ github.sha }} # Usamos el ID del commit para que cada imagen sea única
       run: |
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
