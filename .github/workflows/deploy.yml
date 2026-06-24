@@ -4,14 +4,12 @@ on:
   push:
     branches:
       - deploy # Se ejecuta automáticamente cuando haces push a esta rama
-
 env:
-  AWS_REGION: us-east-1                    # La región oficial de AWS Academy
-  ECS_CLUSTER: innovatech-cluster          # El clúster que vas a crear en la U
-  # NOTA: Abajo cambias el nombre del servicio y de la tarea según el repo (backend o frontend)
-  ECS_SERVICE: innovatech-frontend-service 
-  ECS_TASK_DEFINITION: innovatech-frontend-task 
-  CONTAINER_NAME: frontend-container       # El nombre que le pusiste al contenedor en la Task Definition
+  AWS_REGION: us-east-1                    # La región está perfecta (Norte de Virginia)
+  ECS_CLUSTER: default                     # <--- ¡CAMBIA ESTO! Tu clúster real se llama 'default'
+  ECS_SERVICE: innovatech-cluster-f190     # <--- ¡CAMBIA ESTO! Es el nombre del servicio que sale en tu foto
+  ECS_TASK_DEFINITION: default-innovatech-cluster-f190 # <--- ¡CAMBIA ESTO! Es la definición de tarea que se ve en la tabla
+  CONTAINER_NAME: innovatech-cluster-f190  # <--- Revisa que en tu Task Definition el contenedor se llame igual
 
 jobs:
   deploy:
