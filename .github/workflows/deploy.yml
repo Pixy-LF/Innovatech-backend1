@@ -5,11 +5,11 @@ on:
     branches:
       - deploy # Se ejecuta automáticamente cuando haces push a esta rama
 env:
-  AWS_REGION: us-east-1                    # La región está perfecta (Norte de Virginia)
-  ECS_CLUSTER: default                     # <--- ¡CAMBIA ESTO! Tu clúster real se llama 'default'
-  ECS_SERVICE: innovatech-cluster-f190     # <--- ¡CAMBIA ESTO! Es el nombre del servicio que sale en tu foto
-  ECS_TASK_DEFINITION: default-innovatech-cluster-f190 # <--- ¡CAMBIA ESTO! Es la definición de tarea que se ve en la tabla
-  CONTAINER_NAME: innovatech-cluster-f190  # <--- Revisa que en tu Task Definition el contenedor se llame igual
+  AWS_REGION: us-east-1
+  ECS_CLUSTER: default                     # Tu clúster real (visto en la captura anterior)
+  ECS_SERVICE: innovatech-cluster-f190     # Tu servicio activo (visto en la captura anterior)
+  ECS_TASK_DEFINITION: innovatech-frontend-task # <--- ¡CAMBIADO! El nombre exacto que sale en tu foto 1
+  CONTAINER_NAME: frontend-container       # <--- ¡CAMBIADO! El nombre exacto de tu contenedor que sale en tu foto 2
 
 jobs:
   deploy:
