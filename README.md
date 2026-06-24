@@ -1,21 +1,42 @@
-# 🚀 Innovatech - API REST Despacho (Backend)
+# Innovatech - Fase 3: Escalabilidad y Orquestación Cloud 🚀
 
-Este repositorio contiene la API REST para el sistema de gestión de despachos de **Innovatech**, desarrollada en **Spring Boot** y configurada bajo estándares DevOps de alta disponibilidad, seguridad y automatización.
+Este repositorio contiene el código fuente y la configuración del pipeline de Integración y Despliegue Continuo (CI/CD) para el microservicio de **Frontend** del proyecto Innovatech. La infraestructura está diseñada para operar de manera elástica, segura y con alta disponibilidad.
 
-## 🛠️ Tecnologías Utilizadas
-* **Backend:** Java 17 / Spring Boot
-* **Base de Datos:** PostgreSQL 15 (Alpine)
-* **Contenedorización:** Docker & Docker Compose
-* **CI/CD:** GitHub Actions
-* **Cloud Infrastructure:** AWS EC2
+## 🏗️ Arquitectura de la Solución
 
-## 🔒 Buenas Prácticas de Seguridad Aplicadas (Rúbrica)
-* **Multi-stage Build:** Optimización de capas en el `Dockerfile` para reducir el tamaño de la imagen final y remover herramientas de compilación innecesarias en producción.
-* **Usuario No-Root:** El contenedor ejecuta la aplicación bajo un usuario de mínimos privilegios (`devops_user`), mitigando riesgos de escalada de privilegios.
-* **Aislamiento de Red:** La base de datos y la API se comunican a través de una red privada virtual de Docker (`bridge`), aislando la base de datos del acceso público directo.
-* **Persistencia de Datos:** Implementación de un *Named Volume* (`db-data`) gestionado por Docker para asegurar la continuidad operativa de los datos.
+La solución implementa una arquitectura serverless y automatizada utilizando los siguientes servicios de AWS:
 
-## 🚀 Pipeline de CI/CD (GitHub Actions)
-El archivo `.github/workflows/deploy.yml` automatiza el flujo completo:
-1. **CI:** Compila el proyecto con Maven, construye la imagen Docker y la sube de forma segura a **Docker Hub**.
-2. **CD:** Se conecta vía **SSH** a la instancia **AWS EC2**, descarga la nueva imagen y reinicia los servicios utilizando `docker compose`.
+* **AWS ECS (Elastic Container Service) con AWS Fargate:** Orquestación de contenedores sin gestión de servidores físicos.
+* **Amazon ECR (Elastic Container Registry):** Almacenamiento y versionamiento privado de las imágenes Docker.
+* **Application Load Balancer (ALB):** Distribución inteligente del tráfico externo hacia los contenedores activos.
+* **AWS CloudWatch:** Centralización de métricas críticas y logs de auditoría del sistema.
+
+---
+
+## 🤖 Pipeline CI/CD (GitHub Actions)
+
+El archivo de flujo de trabajo `.github/workflows/deploy.yml` automatiza el ciclo de vida del software cada vez que se realiza un `git push` a la rama principal. El pipeline ejecuta las siguientes etapas:
+
+1.  **Aprovisionamiento de Credenciales:** Autenticación segura mediante secretos de GitHub utilizando el `LabRole` temporal de AWS Academy.
+2.  **Build & Tag:** Compilación de la imagen Docker optimizada utilizando el Commit SHA como etiqueta única de trazabilidad.
+3.  **Push a ECR:** Carga de la imagen construida hacia el registro privado en Amazon ECR.
+4.  **Deploy en ECS:** Actualización del servicio en el clúster `default` aplicando una estrategia de despliegue progresivo (*Rolling Update*) con **cero tiempo de inactividad (Cero Downtime)**.
+
+---
+
+## 🔒 Variables de Entorno y Configuración del Entorno
+
+Para la replicación y auditoría del despliegue, el pipeline utiliza las siguientes variables clave mapeadas en la infraestructura:
+
+* **AWS_REGION:** `us-east-1`
+* **ECS_CLUSTER:** `default`
+* **ECS_SERVICE:** `innovatech-cluster-f190`
+* **ECS_TASK_DEFINITION:** `innovatech-frontend-task`
+* **CONTAINER_NAME:** `frontend-container`
+
+---
+
+## 📈 Resiliencia y Alta Disponibilidad
+
+* **Service Auto Scaling:** Implementación de políticas de *Target Tracking* basadas en el consumo promedio de CPU al **50%**.
+* **Health Checks Activos:** El balanceador valida el estado de salud del contenedor antes de redirigir el tráfico de producción, garantizando que los usuarios nunca experimenten caídas del servicio durante una actualización.
