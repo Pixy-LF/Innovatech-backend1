@@ -1,73 +1,62 @@
-name: Deploy to AWS ECS
+name: Deploy Innovatech Backend
 
 on:
   push:
     branches:
-      - deploy # Se ejecuta automáticamente cuando haces push a esta rama
-
-env:
-  AWS_REGION: us-east-1                    # La región oficial de AWS Academy
-  ECS_CLUSTER: innovatech-cluster          # El clúster que vas a crear en la U
-  # NOTA: Abajo cambias el nombre del servicio y de la tarea según el repo (backend o frontend)
-  ECS_SERVICE: innovatech-frontend-service 
-  ECS_TASK_DEFINITION: innovatech-frontend-task 
-  CONTAINER_NAME: frontend-container       # El nombre que le pusiste al contenedor en la Task Definition
+      - deploy 
 
 jobs:
-  deploy:
-    name: Build, Push and Deploy
+  build-and-push:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+      - name: Checkout del código
+        uses: actions/checkout@v3
 
-    # 1. AUTENTICACIÓN EN AWS ACADEMY (Usando Secrets)
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }} # Obligatorio para cuentas de estudiante
-        aws-region: ${{ env.AWS_REGION }}
+      - name: Configurar Java y Maven
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-    # 2. LOGIN EN EL REGISTRO PRIVADO DE AWS (Amazon ECR)
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v2
+      - name: Iniciar sesión en Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    # 3. CONSTRUIR LA IMAGEN DOCKER Y SUBIRLA A ECR
-    - name: Build, Tag, and Push Image to ECR
-      id: build-image
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        # NOTA: Cambia 'innovatech-frontend' por 'innovatech-backend' en el otro repositorio
-        ECR_REPOSITORY: innovatech-frontend 
-        IMAGE_TAG: ${{ github.sha }} # Usamos el ID del commit para que cada imagen sea única
-      run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+      - name: Construir y subir imagen Docker
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/innovatech-backend:latest
 
-    # 4. DESCARGAR LA RECETA (Task Definition) ACTUAL DESDE AWS
-    - name: Download Active Task Definition
-      run: |
-        aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEFINITION }} --query taskDefinition > task-definition.json
-
-    # 5. ACTUALIZAR LA RECETA CON LA NUEVA IMAGEN DE DOCKER
-    - name: Update Web Image in Task Definition
-      id: render-task-def
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
-      with:
-        task-definition: task-definition.json
-        container-name: ${{ env.CONTAINER_NAME }}
-        image: ${{ steps.build-image.outputs.image }}
-
-    # 6. DESPLIEGUE FINAL EN ECS (Cero Downtime / Tolerante a fallos)
-    - name: Deploy to Amazon ECS Service
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-      with:
-        task-definition: ${{ steps.render-task-def.outputs.task-definition }}
-        service: ${{ env.ECS_SERVICE }}
-        cluster: ${{ env.ECS_CLUSTER }}
-        wait-for-service-stability: true # El pipeline no se pone verde hasta que AWS verifique que la app corre bien
+  deploy-to-ec2:
+    needs: build-and-push 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Despliegue remoto en AWS EC2 vía SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}          
+          username: ubuntu                       
+          key: ${{ secrets.EC2_SSH_KEY }}       
+          script: |
+            echo "Conectado exitosamente a AWS EC2. Iniciando actualización..."
+            
+            # 1. Nos movemos a la carpeta del proyecto en el servidor
+            cd /home/ubuntu/Innovatech-backend1 || mkdir -p /home/ubuntu/Innovatech-backend1 && cd /home/ubuntu/Innovatech-backend1
+            
+            # 2. Descargamos los últimos cambios (el nuevo docker-compose)
+            git pull origin deploy || true
+            
+            # 3. Bajamos los contenedores anteriores y limpiamos basura para no llenar el disco
+            docker compose down
+            docker system prune -f
+            
+            # 4. Descargamos la nueva imagen armada y levantamos el stack en segundo plano
+            docker compose pull
+            docker compose up -d --build
+            
+            echo "¡Innovatech Despacho Backend actualizado y corriendo con éxito!"
