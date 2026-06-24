@@ -3,13 +3,13 @@ name: Deploy to AWS ECS
 on:
   push:
     branches:
-      - deploy # Se ejecuta automáticamente cuando haces push a esta rama
+      - deploy 
 env:
   AWS_REGION: us-east-1
-  ECS_CLUSTER: default                     # Tu clúster real (visto en la captura anterior)
-  ECS_SERVICE: innovatech-cluster-f190     # Tu servicio activo (visto en la captura anterior)
-  ECS_TASK_DEFINITION: innovatech-frontend-task # <--- ¡CAMBIADO! El nombre exacto que sale en tu foto 1
-  CONTAINER_NAME: frontend-container       # <--- ¡CAMBIADO! El nombre exacto de tu contenedor que sale en tu foto 2
+  ECS_CLUSTER: default                     
+  ECS_SERVICE: innovatech-cluster-f190     
+  ECS_TASK_DEFINITION: innovatech-frontend-task 
+  CONTAINER_NAME: frontend-container       
 
 jobs:
   deploy:
@@ -20,39 +20,33 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    # 1. AUTENTICACIÓN EN AWS ACADEMY (Usando Secrets)
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }} # Obligatorio para cuentas de estudiante
+        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }} 
         aws-region: ${{ env.AWS_REGION }}
 
-    # 2. LOGIN EN EL REGISTRO PRIVADO DE AWS (Amazon ECR)
     - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
-    # 3. CONSTRUIR LA IMAGEN DOCKER Y SUBIRLA A ECR
     - name: Build, Tag, and Push Image to ECR
       id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        # NOTA: Cambia 'innovatech-frontend' por 'innovatech-backend' en el otro repositorio
         ECR_REPOSITORY: innovatech-fronted 
-        IMAGE_TAG: ${{ github.sha }} # Usamos el ID del commit para que cada imagen sea única
+        IMAGE_TAG: ${{ github.sha }} 
       run: |
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-    # 4. DESCARGAR LA RECETA (Task Definition) ACTUAL DESDE AWS
     - name: Download Active Task Definition
       run: |
         aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEFINITION }} --query taskDefinition > task-definition.json
 
-    # 5. ACTUALIZAR LA RECETA CON LA NUEVA IMAGEN DE DOCKER
     - name: Update Web Image in Task Definition
       id: render-task-def
       uses: aws-actions/amazon-ecs-render-task-definition@v1
@@ -61,11 +55,10 @@ jobs:
         container-name: ${{ env.CONTAINER_NAME }}
         image: ${{ steps.build-image.outputs.image }}
 
-    # 6. DESPLIEGUE FINAL EN ECS (Cero Downtime / Tolerante a fallos)
     - name: Deploy to Amazon ECS Service
       uses: aws-actions/amazon-ecs-deploy-task-definition@v2
       with:
         task-definition: ${{ steps.render-task-def.outputs.task-definition }}
         service: ${{ env.ECS_SERVICE }}
         cluster: ${{ env.ECS_CLUSTER }}
-        wait-for-service-stability: true # El pipeline no se pone verde hasta que AWS verifique que la app corre bien
+        wait-for-service-stability: true 
