@@ -18,8 +18,8 @@ El ecosistema de **Innovatech** está compuesto por dos componentes principales 
 
 Para levantar y probar este proyecto en tu entorno local de desarrollo, necesitas tener instalados los siguientes componentes:
 
-* [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Versión 20.10 o superior)
-* [Git](https://git-scm.com/)
+* [Docker Desktop] (https://www.docker.com/products/docker-desktop/) (Versión 20.10 o superior)
+* [Git] (https://git-scm.com/)
 
 ### Instrucciones de Despliegue Rápido (Local)
 
